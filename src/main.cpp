@@ -3,7 +3,6 @@
 #include <Adafruit_ILI9341.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
-#include "wifi_credentials.h"
 #include "time.h"
 
 #define TFT_CS               D2
@@ -39,6 +38,14 @@ Adafruit_ILI9341 tft         = Adafruit_ILI9341(TFT_CS, TFT_DC);
 #define ILI9341_LORANGE      0xFC08
 #define ILI9341_LGREEN       0x87F0
 
+#ifndef WIFI_SSID
+#define WIFI_SSID "my ssid"
+#endif
+
+#ifndef WIFI_PASS
+#define WIFI_PASS "password"
+#endif
+
 bool wifiConnect();
 bool getNtpTime();
 void setBGLuminosity(int intensity);
@@ -69,7 +76,7 @@ void setup() {
     tft.setTextColor(ILI9341_LORANGE);
     tft.println("Connecting to WiFi AP ");
     tft.setTextColor(ILI9341_WHITE);
-    tft.println(ssid);
+    tft.println(WIFI_SSID);
 
     /**
      * Wifi connect
@@ -118,7 +125,7 @@ void setBGLuminosity(int level) {
 bool wifiConnect() {
     // // check for the presence of the shield:
     WiFi.mode(WIFI_STA);
-    WiFiMulti.addAP(ssid, pass);
+    WiFiMulti.addAP(WIFI_SSID, WIFI_PASS);
 
     while (WiFiMulti.run() != WL_CONNECTED) {
         tft.print(".");
@@ -212,7 +219,7 @@ void dateChanged() {
  */
 String refreshTime() {
     Serial.println("refresh time");
-    
+
     //Time
     time_t now;
     struct tm *timeinfo;
@@ -247,8 +254,8 @@ String refreshTime() {
             dateChanged();
         }
     }
-    
+
     Serial.println("refresh time done");
-    
+
     return currTime;
 }
