@@ -4,6 +4,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include "time.h"
+#include <Fonts/DSEG14Modern_Light40pt7b.h>
 
 #define TFT_CS               D2
 #define TFT_DC               D1
@@ -16,8 +17,8 @@ const int daylightOffset_sec = 3600;
 /**
  * TFT Display Constants
  */
-const int xTime              = 14;
-const int yTime              = 14;
+const int xTime              = 21;
+const int yTime              = 104;
 const int tftBG              = ILI9341_BLACK;
 const int tftTimeFG          = ILI9341_RED;
 
@@ -31,8 +32,6 @@ String weekDays[]            = {"", "Mon", "Thu", "Wed", "Thu", "Fri", "Sat", "S
 String months[]              = {"", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
 ESP8266WiFiMulti             WiFiMulti;
-WiFiServer                   wifiServer(1234);
-
 Adafruit_ILI9341 tft         = Adafruit_ILI9341(TFT_CS, TFT_DC);
 
 #define ILI9341_LORANGE      0xFC08
@@ -157,12 +156,16 @@ bool getNtpTime() {
  * Displays time string erasing the previous one
  */
 void displayTime() {
-    tft.setTextSize(10);
-    tft.setCursor(xTime, yTime);
-    tft.setTextColor(tftBG);
-    yield();
+    tft.setTextSize(1);
 
-    tft.println(prevTime);
+    tft.setCursor(xTime, yTime);
+    tft.setFont(&DSEG14Modern_Light40pt7b);
+
+    int16_t  x1, y1;
+    uint16_t w, h;
+
+    tft.getTextBounds("00:00", xTime, yTime, &x1, &y1, &w, &h);
+    tft.fillRect(x1,y1,w,h,tftBG);
     yield();
 
     tft.setCursor(xTime, yTime);
@@ -170,15 +173,16 @@ void displayTime() {
     yield();
 
     tft.println(currTime);
+    tft.setFont();
 }
 
 /**
  * Displays date string
  */
 void displayDate() {
-    tft.fillRect(14, 94, 192, 30, ILI9341_BLACK);
-    tft.setTextSize(3);
-    tft.setCursor(26, 94);
+    tft.fillRect(0, yTime + 10, 240, 50, ILI9341_BLACK);
+    tft.setTextSize(2);
+    tft.setCursor(26, yTime + 10);
     tft.setTextColor(ILI9341_LGREEN);
     yield();
     tft.println(currDate);
