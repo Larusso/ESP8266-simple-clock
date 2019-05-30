@@ -4,7 +4,8 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include "time.h"
-#include <Fonts/DSEG14Modern_Light40pt7b.h>
+#include <Fonts/DSEG14Modern_Bold40pt7b.h>
+#include <Fonts/Droid_Sans_Mono_Nerd_Font_Complete_Mono15pt7b.h>
 
 #define TFT_CS               D2
 #define TFT_DC               D1
@@ -159,20 +160,18 @@ void displayTime() {
     tft.setTextSize(1);
 
     tft.setCursor(xTime, yTime);
-    tft.setFont(&DSEG14Modern_Light40pt7b);
+    tft.setFont(&DSEG14Modern_Bold40pt7b);
 
     int16_t  x1, y1;
     uint16_t w, h;
 
     tft.getTextBounds("00:00", xTime, yTime, &x1, &y1, &w, &h);
-    tft.fillRect(x1,y1,w,h,tftBG);
     yield();
-
+    tft.fillRect(x1,y1,w,h,tftBG);
     tft.setCursor(xTime, yTime);
     tft.setTextColor(tftTimeFG);
-    yield();
-
     tft.println(currTime);
+    yield();
     tft.setFont();
 }
 
@@ -180,12 +179,21 @@ void displayTime() {
  * Displays date string
  */
 void displayDate() {
-    tft.fillRect(0, yTime + 10, 240, 50, ILI9341_BLACK);
-    tft.setTextSize(2);
-    tft.setCursor(26, yTime + 10);
-    tft.setTextColor(ILI9341_LGREEN);
+    tft.setTextSize(1);
+    tft.setCursor(16, yTime + 40);
+    tft.setFont(&Droid_Sans_Mono_Nerd_Font_Complete_Mono15pt7b);
+
+    int16_t  x1, y1;
+    uint16_t w, h;
+
+    tft.getTextBounds("Mon, 31 Jun 2020", 16, yTime + 40, &x1, &y1, &w, &h);
     yield();
+    tft.fillRect(x1,y1,w,h,tftBG);
+    tft.setTextColor(ILI9341_LGREEN);
     tft.println(currDate);
+    yield();
+    tft.setFont();
+
 }
 
 /**
