@@ -6,10 +6,11 @@
 #include "time.h"
 #include <Fonts/DSEG14Modern_Bold40pt7b.h>
 #include <Fonts/Droid_Sans_Mono_Nerd_Font_Complete_Mono15pt7b.h>
+#include <Wire.h>
+#include <BH1750.h>
 
 #define TFT_CS               D2
 #define TFT_DC               D1
-#define TFT_LED              D0
 
 const char *ntpServer        = "pool.ntp.org";
 const long gmtOffset_sec     = 3600;
@@ -34,6 +35,7 @@ String months[]              = {"", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "J
 
 ESP8266WiFiMulti             WiFiMulti;
 Adafruit_ILI9341 tft         = Adafruit_ILI9341(TFT_CS, TFT_DC);
+BH1750 lightMeter(0x23);
 
 #define ILI9341_LORANGE      0xFC08
 #define ILI9341_LGREEN       0x87F0
@@ -48,7 +50,6 @@ Adafruit_ILI9341 tft         = Adafruit_ILI9341(TFT_CS, TFT_DC);
 
 bool wifiConnect();
 bool getNtpTime();
-void setBGLuminosity(int intensity);
 String refreshTime();
 void displayTime();
 
@@ -57,8 +58,7 @@ void setup() {
     tft.begin();
     tft.setRotation(3);
     yield();
-    pinMode(TFT_LED, OUTPUT);
-    setBGLuminosity(255);
+    Wire.begin(D4, D3);
 
 
     //Boot screen
@@ -98,25 +98,28 @@ void setup() {
     getNtpTime();
     delay(100); //We need a delay to allow info propagation
 
+
+    //Set up Lightmeter
+    tft.println("Setup Light meter.");
+    lightMeter.begin();
+
     tft.println("End of booting process.");
 
     delay(10000);
 
     //Prepare screen for normal operation
-    setBGLuminosity(0);
     tft.fillScreen(ILI9341_BLACK);
     yield();
     displayTime();
-    setBGLuminosity(255);
 }
 
 void loop() {
     refreshTime();
+    float lux = lightMeter.readLightLevel();
+    Serial.print("Light: ");
+    Serial.print(lux);
+    Serial.println(" lx");
     delay(1000);
-}
-
-void setBGLuminosity(int level) {
-    analogWrite(TFT_LED, level);
 }
 
 /**
