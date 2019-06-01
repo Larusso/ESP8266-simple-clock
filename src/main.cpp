@@ -29,6 +29,10 @@ String currTime              = "";
 String prevDate              = "";
 String currDate              = "";
 
+
+float prevLux             = 0;
+float currLux             = 0;
+
 bool onWifi                  = false;
 String weekDays[]            = {"", "Mon", "Thu", "Wed", "Thu", "Fri", "Sat", "Sun"};
 String months[]              = {"", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
@@ -39,6 +43,7 @@ BH1750 lightMeter(0x23);
 
 #define ILI9341_LORANGE      0xFC08
 #define ILI9341_LGREEN       0x87F0
+#define ILI9341_LCYAN        0x0418
 
 #ifndef WIFI_SSID
 #define WIFI_SSID "my ssid"
@@ -52,6 +57,11 @@ bool wifiConnect();
 bool getNtpTime();
 String refreshTime();
 void displayTime();
+void displayDate();
+
+void displayLux();
+void luxChanged();
+float getCurrentLux();
 
 void setup() {
     Serial.begin(115200);
@@ -111,14 +121,13 @@ void setup() {
     tft.fillScreen(ILI9341_BLACK);
     yield();
     displayTime();
+    displayDate();
+    displayLux();
 }
 
 void loop() {
     refreshTime();
-    float lux = lightMeter.readLightLevel();
-    Serial.print("Light: ");
-    Serial.print(lux);
-    Serial.println(" lx");
+    getCurrentLux();
     delay(1000);
 }
 
@@ -197,6 +206,52 @@ void displayDate() {
     yield();
     tft.setFont();
 
+}
+
+void displayLux() {
+    int bgColor = 0;
+    if(currLux == prevLux){
+        bgColor = ILI9341_LGREEN;
+    }else if(currLux < prevLux){
+        bgColor = ILI9341_LCYAN;
+    }else{
+        bgColor = ILI9341_LORANGE;
+    }
+    tft.setTextColor(ILI9341_BLACK);
+    yield();
+    tft.fillRect(212, 170, 92, 60, bgColor);
+    tft.drawRect(212, 170, 92, 60, ILI9341_WHITE);
+    yield();
+    tft.setTextSize(2);
+    tft.setCursor(242, 174);
+    tft.print("LUX");
+    tft.setTextSize(3);
+    tft.setCursor(214, 200);
+    char cLux[5]=" ";
+    sprintf(cLux, "%05f", currLux);
+    tft.print(cLux);
+}
+
+/**
+ * Returns ambient light luxes
+ */
+float getCurrentLux() {
+    prevLux = currLux;
+    currLux = lightMeter.readLightLevel();
+
+    if(prevLux != currLux){
+        luxChanged();
+    }
+    return currLux;
+}
+
+/**
+ * Event for change of ambient light
+ */
+void luxChanged(){
+    Serial.print("luxChanged event fired! ");
+    Serial.println(currLux);
+    displayLux();
 }
 
 /**
