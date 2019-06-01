@@ -111,7 +111,7 @@ void setup() {
 
     //Set up Lightmeter
     tft.println("Setup Light meter.");
-    lightMeter.begin();
+    lightMeter.begin(BH1750::Mode::CONTINUOUS_HIGH_RES_MODE_2);
 
     tft.println("End of booting process.");
 
