@@ -21,39 +21,39 @@
 
 //const int DHT_OUT = 27;
 
-const char *ntpServer        = "pool.ntp.org";
-const long gmtOffset_sec     = 3600;
+const char *ntpServer = "pool.ntp.org";
+const long gmtOffset_sec = 3600;
 const int daylightOffset_sec = 3600;
 
 /**
  * TFT Display Constants
  */
-const int xTime              = 21;
-const int yTime              = 104;
-const int tftBG              = ILI9341_BLACK;
-const int tftTimeFG          = ILI9341_RED;
+const int xTime = 21;
+const int yTime = 104;
+const int tftBG = ILI9341_BLACK;
+const int tftTimeFG = ILI9341_RED;
 
-String prevTime              = "";
-String currTime              = "";
-String prevDate              = "";
-String currDate              = "";
+String prevTime = "";
+String currTime = "";
+String prevDate = "";
+String currDate = "";
 
-float prevTemp               = 0;
-float currTemp               = 0;
-float prevHumi               = 0;
-float currHumi               = 0;
+float prevTemp = 0;
+float currTemp = 0;
+float prevHumi = 0;
+float currHumi = 0;
 
-float prevLux                = 0;
-float currLux                = 0;
+float prevLux = 0;
+float currLux = 0;
 
-bool onWifi                  = false;
-String weekDays[]            = {"", "Mon", "Thu", "Wed", "Thu", "Fri", "Sat", "Sun"};
-String months[]              = {"", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-
-ESP8266WiFiMulti             WiFiMulti;
-Adafruit_ILI9341 tft         = Adafruit_ILI9341(TFT_CS, TFT_DC);
+bool onWifi = false;
+String weekDays[] = {"", "Mon", "Thu", "Wed", "Thu", "Fri", "Sat", "Sun"};
+String months[] = {"", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+uint32_t delayMS;
+ESP8266WiFiMulti WiFiMulti;
+Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 BH1750 lightMeter(0x23);
-DHT dht(DHTPIN, DHTTYPE);
+DHT_Unified dht(DHTPIN, DHTTYPE);
 
 #define ILI9341_LORANGE      0xFC08
 #define ILI9341_LGREEN       0x87F0
@@ -68,20 +68,36 @@ DHT dht(DHTPIN, DHTTYPE);
 #endif
 
 bool wifiConnect();
+
 bool getNtpTime();
+
 String refreshTime();
+
 void displayTime();
+
 void displayDate();
+
 void displayTemp();
+
 void displayHumi();
 
 void displayLux();
+
 void luxChanged();
+
 void tempChanged();
+
 void humiChanged();
+
 float getCurrentLux();
+
 float getCurrentTemp();
+
 float getCurrentHumi();
+
+void printTempSensorInfo(const sensor_t &sensor);
+
+void printHumiditySensorInfo(const sensor_t &sensor);
 
 void setup() {
     Serial.begin(115200);
@@ -128,13 +144,23 @@ void setup() {
     getNtpTime();
     delay(100); //We need a delay to allow info propagation
 
-
     //Set up Lightmeter
     tft.println("Setup Light meter.");
     lightMeter.begin(BH1750::Mode::CONTINUOUS_HIGH_RES_MODE_2);
 
-    tft.println("Setup Humidity sensor.");
+    tft.println("Setup Temperature sensor.");
     dht.begin();
+    sensor_t sensor;
+
+    dht.temperature().getSensor(&sensor);
+    printTempSensorInfo(sensor);
+
+    delay(1000);
+    tft.println("Setup Humidity sensor.");
+    dht.humidity().getSensor(&sensor);
+    printHumiditySensorInfo(sensor);
+
+    delayMS = sensor.min_delay / 1000;
 
     tft.println("End of booting process.");
 
@@ -150,12 +176,50 @@ void setup() {
     displayLux();
 }
 
+void printHumiditySensorInfo(const sensor_t &sensor) {
+    tft.println("Humidity Sensor");
+    tft.print("Sensor Type: ");
+    tft.println(sensor.name);
+    tft.print("Driver Ver: ");
+    tft.println(sensor.version);
+    tft.print("Unique ID: ");
+    tft.println(sensor.sensor_id);
+    tft.print("Max Value: ");
+    tft.print(sensor.max_value);
+    tft.println("%");
+    tft.print("Min Value: ");
+    tft.print(sensor.min_value);
+    tft.println("%");
+    tft.print("Resolution: ");
+    tft.print(sensor.resolution);
+    tft.println("%");
+}
+
+void printTempSensorInfo(const sensor_t &sensor) {
+    tft.println("Temperature Sensor");
+    tft.print("Sensor Type: ");
+    tft.println(sensor.name);
+    tft.print("Driver Ver:  ");
+    tft.println(sensor.version);
+    tft.print("Unique ID:   ");
+    tft.println(sensor.sensor_id);
+    tft.print("Max Value:   ");
+    tft.print(sensor.max_value);
+    tft.println("C");
+    tft.print("Min Value:   ");
+    tft.print(sensor.min_value);
+    tft.println("C");
+    tft.print("Resolution:  ");
+    tft.print(sensor.resolution);
+    tft.println("C");
+}
+
 void loop() {
     refreshTime();
     getCurrentLux();
     getCurrentHumi();
     getCurrentTemp();
-    delay(1000);
+    delay(delayMS);
 }
 
 /**
@@ -201,12 +265,12 @@ void displayTime() {
     tft.setCursor(xTime, yTime);
     tft.setFont(&DSEG14Modern_Bold40pt7b);
 
-    int16_t  x1, y1;
+    int16_t x1, y1;
     uint16_t w, h;
 
     tft.getTextBounds("00:00", xTime, yTime, &x1, &y1, &w, &h);
     yield();
-    tft.fillRect(x1,y1,w,h,tftBG);
+    tft.fillRect(x1, y1, w, h, tftBG);
     tft.setCursor(xTime, yTime);
     tft.setTextColor(tftTimeFG);
     tft.println(currTime);
@@ -222,12 +286,12 @@ void displayDate() {
     tft.setCursor(16, yTime + 40);
     tft.setFont(&Droid_Sans_Mono_Nerd_Font_Complete_Mono15pt7b);
 
-    int16_t  x1, y1;
+    int16_t x1, y1;
     uint16_t w, h;
 
     tft.getTextBounds("Mon, 31 Jun 2020", 16, yTime + 40, &x1, &y1, &w, &h);
     yield();
-    tft.fillRect(x1,y1,w,h,tftBG);
+    tft.fillRect(x1, y1, w, h, tftBG);
     tft.setTextColor(ILI9341_LGREEN);
     tft.println(currDate);
     yield();
@@ -237,11 +301,11 @@ void displayDate() {
 
 void displayLux() {
     int bgColor = 0;
-    if(currLux == prevLux){
+    if (currLux == prevLux) {
         bgColor = ILI9341_LGREEN;
-    }else if(currLux < prevLux){
+    } else if (currLux < prevLux) {
         bgColor = ILI9341_LCYAN;
-    }else{
+    } else {
         bgColor = ILI9341_LORANGE;
     }
     tft.setTextColor(ILI9341_BLACK);
@@ -254,7 +318,7 @@ void displayLux() {
     tft.print("LUX");
     tft.setTextSize(3);
     tft.setCursor(214, 200);
-    char cLux[5]=" ";
+    char cLux[5] = " ";
     sprintf(cLux, "%05f", currLux);
     tft.print(cLux);
 }
@@ -262,13 +326,13 @@ void displayLux() {
 /**
  * Displays temperature
  */
-void displayTemp(){
+void displayTemp() {
     int bgColor = 0;
-    if(currTemp == prevTemp){
+    if (currTemp == prevTemp) {
         bgColor = ILI9341_LGREEN;
-    }else if(currTemp < prevTemp){
+    } else if (currTemp < prevTemp) {
         bgColor = ILI9341_LCYAN;
-    }else{
+    } else {
         bgColor = ILI9341_LORANGE;
     }
 
@@ -284,16 +348,17 @@ void displayTemp(){
     tft.setCursor(16, 200);
     tft.print(currTemp);
 }
+
 /**
  * Displays relative humidity
  */
-void displayHumi(){
+void displayHumi() {
     int bgColor = 0;
-    if(currHumi == prevHumi){
+    if (currHumi == prevHumi) {
         bgColor = ILI9341_LGREEN;
-    }else if(currHumi < prevHumi){
+    } else if (currHumi < prevHumi) {
         bgColor = ILI9341_LCYAN;
-    }else{
+    } else {
         bgColor = ILI9341_LORANGE;
     }
     tft.setTextColor(ILI9341_BLACK);
@@ -316,7 +381,7 @@ float getCurrentLux() {
     prevLux = currLux;
     currLux = lightMeter.readLightLevel();
 
-    if(prevLux != currLux){
+    if (prevLux != currLux) {
         luxChanged();
     }
     return currLux;
@@ -325,21 +390,43 @@ float getCurrentLux() {
 /**
  * Returns temperature
  */
-float getCurrentTemp(){
+float getCurrentTemp() {
     prevTemp = currTemp;
-    currTemp = dht.readTemperature();;
-    if(prevTemp != currTemp){
+
+    sensors_event_t event;
+    dht.temperature().getEvent(&event);
+    if (isnan(event.temperature)) {
+        Serial.println("Error reading temperature!");
+    } else {
+        Serial.print("Temperature: ");
+        Serial.print(event.temperature);
+        Serial.println("°C");
+        currTemp = event.temperature;
+    }
+
+    if (prevTemp != currTemp) {
         tempChanged();
     }
+
     return currTemp;
 }
+
 /**
  * Returns humidity
  */
-float getCurrentHumi(){
+float getCurrentHumi() {
     prevHumi = currHumi;
-    currHumi = dht.readHumidity();
-    if(prevHumi != currHumi){
+    sensors_event_t event;
+    dht.humidity().getEvent(&event);
+    if (isnan(event.relative_humidity)) {
+        Serial.println("Error reading humidity!");
+    } else {
+        Serial.print("Humidity: ");
+        Serial.print(event.relative_humidity);
+        Serial.println("%");
+    }
+    currHumi = event.relative_humidity;
+    if (prevHumi != currHumi) {
         humiChanged();
     }
     return currHumi;
@@ -348,7 +435,7 @@ float getCurrentHumi(){
 /**
  * Event for change of ambient light
  */
-void luxChanged(){
+void luxChanged() {
     Serial.print("luxChanged event fired! ");
     Serial.println(currLux);
     displayLux();
@@ -357,14 +444,15 @@ void luxChanged(){
 /**
  * Event for change of temperature
  */
-void tempChanged(){
+void tempChanged() {
     Serial.print("tempChanged event fired! ");
     displayTemp();
 }
+
 /**
  * Event for change of humidity
  */
-void humiChanged(){
+void humiChanged() {
     Serial.println("humiChanged event fired!");
     displayHumi();
 
